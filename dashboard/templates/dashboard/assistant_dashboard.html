@@ -99,61 +99,65 @@
 
 		<div class="stats-card">
 			<p class="stats-card-label">Current Status</p>
-			{% if snapshot.current_status_log %}
-				<p style="margin-bottom: 8px;">
+			<p id="assistant-status-badge" style="margin-bottom: 8px;">
+				{% if snapshot.current_status_log %}
 					{% include "includes/_status_badge.html" with status=snapshot.current_status_log.status label=snapshot.current_status_log.get_status_display %}
-				</p>
-				<p class="stats-card-hint">Since {{ snapshot.current_status_log.started_at|date:"H:i" }}</p>
-			{% else %}
-				<p>{% include "includes/_status_badge.html" with status="unknown" label="Unknown" %}</p>
-				<p class="stats-card-hint">No open status log</p>
-			{% endif %}
+				{% else %}
+					{% include "includes/_status_badge.html" with status="unknown" label="Unknown" %}
+				{% endif %}
+			</p>
+			<p id="assistant-status-hint" class="stats-card-hint">
+				{% if snapshot.current_status_log %}
+					Since {{ snapshot.current_status_log.started_at|date:"H:i" }}
+				{% else %}
+					No open status log
+				{% endif %}
+			</p>
 		</div>
 
 		<div class="stats-card">
 			<p class="stats-card-label">Active Pause</p>
-			{% if snapshot.active_pause %}
-				<p style="margin-bottom: 8px;">{% include "includes/_status_badge.html" with status="paused" label=snapshot.active_pause.pause_type.name %}</p>
-				<p id="assistant-pause-timer" class="pause-timer">--:--</p>
-				<p class="stats-card-hint">Started {{ snapshot.active_pause.started_at|default:snapshot.active_pause.requested_at|date:"H:i" }}</p>
-			{% else %}
-				<p>{% include "includes/_status_badge.html" with status="ready" label="No active pause" %}</p>
-				<p class="stats-card-hint">You can request a new pause</p>
-			{% endif %}
+			<p id="assistant-active-pause-badge" style="margin-bottom: 8px;">
+				{% if snapshot.active_pause %}
+					{% include "includes/_status_badge.html" with status="paused" label=snapshot.active_pause.pause_type.name %}
+				{% else %}
+					{% include "includes/_status_badge.html" with status="ready" label="No active pause" %}
+				{% endif %}
+			</p>
+			<p id="assistant-pause-timer" class="pause-timer">--:--</p>
+			<p id="assistant-active-pause-hint" class="stats-card-hint">
+				{% if snapshot.active_pause %}
+					Started {{ snapshot.active_pause.started_at|default:snapshot.active_pause.requested_at|date:"H:i" }}
+				{% else %}
+					You can request a new pause
+				{% endif %}
+			</p>
 		</div>
 	</div>
 
 	<div class="section grid grid-2">
 		<div class="surface">
 			<h2>Pause Actions</h2>
-			{% if snapshot.active_pause %}
-				<div
-					id="assistant-pause-timer-data"
-					data-start-epoch="{{ snapshot.active_pause.started_at|default:snapshot.active_pause.requested_at|date:'U' }}"
-					data-duration-seconds="{{ snapshot.active_pause.pause_type.duration_minutes|default:0 }}"
-					style="display:none;"
-				></div>
-				<div class="kv-list" style="margin-bottom: 12px;">
-					<div class="kv-row">
-						<span class="kv-label">Type</span>
-						<span>{{ snapshot.active_pause.pause_type.name }}</span>
-					</div>
-					<div class="kv-row">
-						<span class="kv-label">Started</span>
-						<span>{{ snapshot.active_pause.started_at|default:snapshot.active_pause.requested_at|date:"d/m/Y H:i" }}</span>
-					</div>
-					<div class="kv-row">
-						<span class="kv-label">Remaining</span>
-						<span id="assistant-pause-timer-inline">--:--</span>
-					</div>
+			<p id="assistant-latest-decision" class="stats-card-hint" style="margin-bottom: 10px;"></p>
+			<div id="assistant-active-pause-block" class="empty-state" style="margin-bottom: 12px;">No active pause at the moment.</div>
+			<div id="assistant-active-pause-details" class="kv-list" style="display:none; margin-bottom: 12px;">
+				<div class="kv-row">
+					<span class="kv-label">Type</span>
+					<span id="assistant-active-pause-type">-</span>
 				</div>
-				<form method="POST" action="{% url 'breaks:finish-active' %}">
-					{% csrf_token %}
-					<button type="submit" class="btn btn-secondary">Finish Active Pause</button>
-				</form>
-			{% else %}
-				<p class="empty-state">No active pause at the moment.</p>
-			{% endif %}
+				<div class="kv-row">
+					<span class="kv-label">Started</span>
+					<span id="assistant-active-pause-started">-</span>
+				</div>
+				<div class="kv-row">
+					<span class="kv-label">Remaining</span>
+					<span id="assistant-pause-timer-inline">--:--</span>
+				</div>
+			</div>
+			<form id="assistant-finish-form" method="POST" action="{% url 'breaks:finish-active' %}" style="display:none;">
+				{% csrf_token %}
+				<button type="submit" class="btn btn-secondary">Finish Active Pause</button>
+			</form>
 		</div>
 
 		<div class="surface">
@@ -183,35 +187,159 @@
 {% block extra_js %}
 	<script>
 		(function () {
-			const timerData = document.getElementById("assistant-pause-timer-data");
 			const timerMain = document.getElementById("assistant-pause-timer");
 			const timerInline = document.getElementById("assistant-pause-timer-inline");
+			const statusBadgeContainer = document.getElementById("assistant-status-badge");
+			const statusHint = document.getElementById("assistant-status-hint");
+			const activePauseBadge = document.getElementById("assistant-active-pause-badge");
+			const activePauseHint = document.getElementById("assistant-active-pause-hint");
+			const activePauseBlock = document.getElementById("assistant-active-pause-block");
+			const activePauseDetails = document.getElementById("assistant-active-pause-details");
+			const activePauseType = document.getElementById("assistant-active-pause-type");
+			const activePauseStarted = document.getElementById("assistant-active-pause-started");
+			const finishForm = document.getElementById("assistant-finish-form");
+			const latestDecision = document.getElementById("assistant-latest-decision");
+			const pollUrl = "{% url 'dashboard:assistant-poll' %}";
+			const pollMs = 5000;
+			let remainingSeconds = null;
 
-			if (!timerData || !timerMain || !timerInline) {
+			if (!timerMain || !timerInline) {
 				return;
 			}
 
-			const startEpoch = parseInt(timerData.getAttribute("data-start-epoch") || "0", 10);
-			const durationMinutes = parseInt(timerData.getAttribute("data-duration-seconds") || "0", 10);
-			const endEpoch = startEpoch + (durationMinutes * 60);
-
 			function formatSeconds(totalSeconds) {
-				const safe = Math.max(parseInt(totalSeconds || 0, 10), 0);
+				const parsed = parseInt(totalSeconds || 0, 10);
+				const negative = parsed < 0;
+				const safe = Math.abs(parsed);
 				const minutes = Math.floor(safe / 60);
 				const seconds = safe % 60;
-				return String(minutes).padStart(2, "0") + ":" + String(seconds).padStart(2, "0");
+				const text = String(minutes).padStart(2, "0") + ":" + String(seconds).padStart(2, "0");
+				return negative ? "-" + text : text;
 			}
 
-			function tick() {
-				const nowEpoch = Math.floor(Date.now() / 1000);
-				const remaining = Math.max(endEpoch - nowEpoch, 0);
-				const text = formatSeconds(remaining);
+			function escapeHtml(value) {
+				return String(value || "")
+					.replace(/&/g, "&amp;")
+					.replace(/</g, "&lt;")
+					.replace(/>/g, "&gt;")
+					.replace(/\"/g, "&quot;")
+					.replace(/'/g, "&#039;");
+			}
+
+			function renderStatusBadge(status, label) {
+				const normalized = (status || "").toLowerCase();
+				const allowed = ["ready", "paused", "pending", "approved", "rejected", "finished"];
+				const badgeClass = allowed.includes(normalized) ? "badge-" + normalized : "badge-neutral";
+				return '<span class="badge ' + badgeClass + '">' + escapeHtml(label || status || "Unknown") + '</span>';
+			}
+
+			function applyNoActivePauseState(message) {
+				remainingSeconds = null;
+				timerMain.textContent = "--:--";
+				timerInline.textContent = "--:--";
+
+				if (activePauseBadge) {
+					activePauseBadge.innerHTML = renderStatusBadge("ready", "No active pause");
+				}
+				if (activePauseHint) {
+					activePauseHint.textContent = message || "You can request a new pause";
+				}
+				if (activePauseBlock) {
+					activePauseBlock.style.display = "block";
+					activePauseBlock.textContent = "No active pause at the moment.";
+				}
+				if (activePauseDetails) {
+					activePauseDetails.style.display = "none";
+				}
+				if (finishForm) {
+					finishForm.style.display = "none";
+				}
+			}
+
+			function applyActivePauseState(activePause) {
+				remainingSeconds = parseInt(activePause.remaining_seconds || 0, 10);
+				if (activePauseBadge) {
+					activePauseBadge.innerHTML = renderStatusBadge("paused", activePause.pause_type);
+				}
+				if (activePauseHint) {
+					activePauseHint.textContent = "Started " + activePause.started_at;
+				}
+				if (activePauseType) {
+					activePauseType.textContent = activePause.pause_type;
+				}
+				if (activePauseStarted) {
+					activePauseStarted.textContent = activePause.started_at;
+				}
+				if (activePauseBlock) {
+					activePauseBlock.style.display = "none";
+				}
+				if (activePauseDetails) {
+					activePauseDetails.style.display = "grid";
+				}
+				if (finishForm) {
+					finishForm.style.display = "block";
+				}
+				tickTimer();
+			}
+
+			function tickTimer() {
+				if (remainingSeconds === null) {
+					return;
+				}
+				const text = formatSeconds(remainingSeconds);
 				timerMain.textContent = text;
 				timerInline.textContent = text;
+				remainingSeconds = remainingSeconds - 1;
 			}
 
-			tick();
-			window.setInterval(tick, 1000);
+			async function runPoll() {
+				try {
+					const response = await fetch(pollUrl, {
+						method: "GET",
+						headers: { "X-Requested-With": "XMLHttpRequest" },
+						credentials: "same-origin",
+						cache: "no-store"
+					});
+
+					if (!response.ok) {
+						return;
+					}
+
+					const payload = await response.json();
+
+					if (statusBadgeContainer && payload.current_status) {
+						statusBadgeContainer.innerHTML = renderStatusBadge(payload.current_status.status, payload.current_status.status_label);
+					}
+					if (statusHint && payload.current_status) {
+						statusHint.textContent = payload.current_status.started_at ? ("Since " + payload.current_status.started_at) : "No open status log";
+					}
+
+					if (payload.active_pause) {
+						applyActivePauseState(payload.active_pause);
+					} else if (payload.pending_pause) {
+						applyNoActivePauseState("Pause request pending approval");
+					} else {
+						applyNoActivePauseState("You can request a new pause");
+					}
+
+					if (latestDecision) {
+						if (payload.latest_pause && payload.latest_pause.status === "rejected") {
+							const reason = payload.latest_pause.rejection_reason ? (" Reason: " + payload.latest_pause.rejection_reason) : "";
+							latestDecision.textContent = "Last request was rejected." + reason;
+						} else if (payload.pending_pause) {
+							latestDecision.textContent = "Your pause request is pending approval.";
+						} else {
+							latestDecision.textContent = "";
+						}
+					}
+				} catch (error) {
+					console.warn("Assistant polling failed", error);
+				}
+			}
+
+			runPoll();
+			window.setInterval(runPoll, pollMs);
+			window.setInterval(tickTimer, 1000);
 		})();
 	</script>
 {% endblock %}

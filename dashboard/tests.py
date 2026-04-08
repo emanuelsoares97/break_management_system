@@ -90,6 +90,47 @@ class SupervisorDashboardPollingTests(TestCase):
 		self.assertEqual(pending_row["username"], "assistant_poll")
 		self.assertEqual(pending_row["team"], "Retention Team")
 
+	def test_assistant_poll_requires_login(self):
+		response = self.client.get(reverse("dashboard:assistant-poll"))
+		self.assertEqual(response.status_code, 302)
+
+	def test_assistant_poll_forbids_supervisor(self):
+		self.client.force_login(self.supervisor)
+
+		response = self.client.get(reverse("dashboard:assistant-poll"))
+
+		self.assertEqual(response.status_code, 403)
+
+	def test_assistant_poll_returns_active_pause_with_remaining_seconds(self):
+		self.client.force_login(self.assistant)
+		session = start_work_session(self.assistant)
+		pause_request = PauseRequest.objects.create(
+			user=self.assistant,
+			team=self.team,
+			session=session,
+			pause_type=self.pause_type,
+			status=PauseRequestStatus.APPROVED,
+			started_at=session.login_at,
+			approved_at=session.login_at,
+			approved_by=self.supervisor,
+		)
+		WorkStatusLog.objects.filter(user=self.assistant, status=WorkStatus.READY, ended_at__isnull=True).update(ended_at=session.login_at)
+		WorkStatusLog.objects.create(
+			user=self.assistant,
+			session=session,
+			status=WorkStatus.PAUSED,
+			pause_request=pause_request,
+			started_at=session.login_at,
+		)
+
+		response = self.client.get(reverse("dashboard:assistant-poll"))
+		self.assertEqual(response.status_code, 200)
+		payload = response.json()
+
+		self.assertIn("active_pause", payload)
+		self.assertEqual(payload["current_status"]["status"], WorkStatus.PAUSED)
+		self.assertIsNotNone(payload["active_pause"]["remaining_seconds"])
+
 
 class MainFlowIntegrationTests(TestCase):
 	def setUp(self):
