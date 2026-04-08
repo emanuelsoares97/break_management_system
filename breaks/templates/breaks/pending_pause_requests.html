@@ -1,96 +1,63 @@
-<!DOCTYPE html>
-<html lang="pt-PT">
-<head>
-	<meta charset="UTF-8">
-	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<title>Pausas Pendentes</title>
+{% extends "base.html" %}
+
+{% block title %}Pending Pauses{% endblock %}
+
+{% block extra_css %}
 	<style>
-		body {
-			font-family: Arial, sans-serif;
-			margin: 20px;
-			max-width: 1200px;
-			margin-left: auto;
-			margin-right: auto;
-		}
-		h1, h2 {
-			color: #333;
-		}
-		.section {
-			margin-bottom: 30px;
-			border: 1px solid #ddd;
-			padding: 15px;
-			border-radius: 5px;
-		}
 		table {
 			width: 100%;
 			border-collapse: collapse;
 			margin: 15px 0;
 		}
+		
 		table th, table td {
-			border: 1px solid #ddd;
+			border: 1px solid #ecf0f1;
 			padding: 10px;
 			text-align: left;
 		}
+		
 		table th {
-			background-color: #f9f9f9;
+			background-color: #ecf0f1;
 			font-weight: bold;
 		}
+		
+		.actions {
+			display: flex;
+			gap: 5px;
+		}
+		
 		button, input[type="submit"] {
-			background-color: #007bff;
+			background-color: #2c3e50;
 			color: white;
 			padding: 5px 10px;
 			border: none;
 			border-radius: 3px;
 			cursor: pointer;
 			margin: 2px;
+			font-size: 12px;
 		}
+		
 		button:hover, input[type="submit"]:hover {
-			background-color: #0056b3;
+			background-color: #1a252f;
 		}
+		
 		.btn-reject {
-			background-color: #dc3545;
+			background-color: #e74c3c;
 		}
+		
 		.btn-reject:hover {
-			background-color: #c82333;
+			background-color: #c0392b;
 		}
-		.messages {
-			list-style: none;
-			padding: 0;
-			margin: 15px 0;
-		}
-		.messages li {
-			padding: 10px;
-			margin: 5px 0;
-			border-radius: 3px;
-		}
-		.messages .success {
-			background-color: #d4edda;
-			border: 1px solid #c3e6cb;
-			color: #155724;
-		}
-		.messages .error {
-			background-color: #f8d7da;
-			border: 1px solid #f5c6cb;
-			color: #721c24;
-		}
+		
 		a {
-			color: #007bff;
+			color: #2c3e50;
 			text-decoration: none;
 		}
+		
 		a:hover {
 			text-decoration: underline;
 		}
-		.actions {
-			display: flex;
-			gap: 5px;
-		}
-		textarea {
-			width: 100%;
-			padding: 5px;
-			border: 1px solid #ccc;
-			border-radius: 3px;
-			font-family: Arial, sans-serif;
-		}
+		
 		.modal {
 			display: none;
 			position: fixed;
@@ -101,6 +68,7 @@
 			height: 100%;
 			background-color: rgba(0,0,0,0.4);
 		}
+		
 		.modal-content {
 			background-color: #fefefe;
 			margin: 10% auto;
@@ -109,6 +77,7 @@
 			width: 400px;
 			border-radius: 5px;
 		}
+		
 		.close {
 			color: #aaa;
 			float: right;
@@ -116,78 +85,76 @@
 			font-weight: bold;
 			cursor: pointer;
 		}
+		
 		.close:hover {
 			color: black;
 		}
+		
+		textarea {
+			width: 100%;
+			padding: 8px;
+			border: 1px solid #ccc;
+			border-radius: 3px;
+			font-family: Arial, sans-serif;
+		}
 	</style>
-</head>
-<body>
-	<h1>Pausas Pendentes</h1>
+{% endblock %}
 
-	<a href="{% url 'dashboard:supervisor' %}">← Voltar ao Dashboard</a>
+{% block content %}
+	<h1>Pending Pause Requests</h1>
 
-	{% if messages %}
-		<ul class="messages">
-			{% for message in messages %}
-				<li class="{% if message.tags %}{{ message.tags }}{% endif %}">
-					{{ message }}
-				</li>
-			{% endfor %}
-		</ul>
+	<p><a href="{% url 'dashboard:supervisor' %}">← Back to Dashboard</a></p>
+
+	<h2>Pending Pauses ({{ pending_requests|length }})</h2>
+	{% if pending_requests %}
+		<table>
+			<thead>
+				<tr>
+					<th>Username</th>
+					<th>Team</th>
+					<th>Type</th>
+					<th>Requested At</th>
+					<th>Actions</th>
+				</tr>
+			</thead>
+			<tbody>
+				{% for pause in pending_requests %}
+					<tr>
+						<td>{{ pause.user.get_full_name|default:pause.user.username }}</td>
+						<td>{{ pause.team.name }}</td>
+						<td>{{ pause.pause_type.name }} ({{ pause.pause_type.duration_display }})</td>
+						<td>{{ pause.requested_at|time:'H:i:s' }}</td>
+						<td>
+							<div class="actions">
+								<form method="POST" action="{% url 'breaks:approve' pause.id %}" style="display:inline;">
+									{% csrf_token %}
+									<input type="submit" value="Approve">
+								</form>
+								<button class="btn-reject" onclick="openRejectForm({{ pause.id }}, '{{ pause.user.username }}')">Reject</button>
+							</div>
+						</td>
+					</tr>
+				{% endfor %}
+			</tbody>
+		</table>
+	{% else %}
+		<p>No pending pauses at the moment.</p>
 	{% endif %}
 
-	<div class="section">
-		<h2>Lista de Pausas Pendentes ({{ pending_requests|length }})</h2>
-		{% if pending_requests %}
-			<table>
-				<thead>
-					<tr>
-						<th>Utilizador</th>
-						<th>Equipa</th>
-						<th>Tipo</th>
-						<th>Pedida às</th>
-						<th>Ações</th>
-					</tr>
-				</thead>
-				<tbody>
-					{% for pause in pending_requests %}
-						<tr>
-							<td>{{ pause.user.get_full_name|default:pause.user.username }}</td>
-							<td>{{ pause.team.name }}</td>
-							<td>{{ pause.pause_type.name }} ({{ pause.pause_type.duration_display }})</td>
-							<td>{{ pause.requested_at|time:'H:i:s' }}</td>
-							<td>
-								<div class="actions">
-									<form method="POST" action="{% url 'breaks:approve' pause.id %}" style="display:inline;">
-										{% csrf_token %}
-										<input type="submit" value="Aprovar">
-									</form>
-									<button class="btn-reject" onclick="openRejectForm({{ pause.id }}, '{{ pause.user.username }}')">Rejeitar</button>
-								</div>
-							</td>
-						</tr>
-					{% endfor %}
-				</tbody>
-			</table>
-		{% else %}
-			<p>Nenhuma pausa pendente no momento.</p>
-		{% endif %}
-	</div>
-
-	<!-- Modal para rejeição com motivo -->
+	<!-- Modal for rejection -->
 	<div id="rejectModal" class="modal">
 		<div class="modal-content">
 			<span class="close" onclick="closeRejectForm()">&times;</span>
-			<h2>Rejeitar Pausa</h2>
+			<h2>Reject Pause</h2>
 			<form id="rejectForm" method="POST">
 				{% csrf_token %}
 				<div style="margin-bottom: 10px;">
-					<label for="reason">Motivo da Rejeição (opcional):</label><br>
+					<label for="reason">Reason (optional):</label><br>
 					<textarea id="reason" name="reason" rows="4"></textarea>
 				</div>
 				<div>
-					<input type="submit" value="Rejeitar">
-					<button type="button" onclick="closeRejectForm()">Cancelar</button>
+					<input type="submit" value="Reject">
+					<button type="button" onclick="closeRejectForm()">Cancel</button>
 				</div>
 			</form>
 		</div>
@@ -197,7 +164,7 @@
 		function openRejectForm(pauseId, username) {
 			const modal = document.getElementById('rejectModal');
 			const form = document.getElementById('rejectForm');
-			form.action = '/breaks/reject/' + pauseId + '/';
+			form.action = '{% url 'breaks:reject' 0 %}'.replace('0', pauseId);
 			modal.style.display = 'block';
 		}
 
@@ -213,6 +180,4 @@
 			}
 		}
 	</script>
-
-</body>
-</html>
+{% endblock %}

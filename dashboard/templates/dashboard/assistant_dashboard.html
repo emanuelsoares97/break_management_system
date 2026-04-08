@@ -1,41 +1,39 @@
-<!DOCTYPE html>
-<html lang="pt-PT">
-<head>
-	<meta charset="UTF-8">
-	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<title>Dashboard - Assistente</title>
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Assistant{% endblock %}
+
+{% block extra_css %}
 	<style>
-		body {
-			font-family: Arial, sans-serif;
-			margin: 20px;
-			max-width: 900px;
-			margin-left: auto;
-			margin-right: auto;
-		}
-		h1, h2 {
-			color: #333;
-		}
 		.section {
-			margin-bottom: 30px;
-			border: 1px solid #ddd;
+			margin-bottom: 25px;
 			padding: 15px;
-			border-radius: 5px;
+			border: 1px solid #ecf0f1;
+			border-radius: 3px;
+			background-color: #fafafa;
 		}
+		
 		.status-badge {
 			display: inline-block;
 			padding: 5px 10px;
 			border-radius: 3px;
-			background-color: #f0f0f0;
-			border: 1px solid #999;
+			background-color: #ecf0f1;
+			border: 1px solid #bdc3c7;
+			font-size: 12px;
 		}
+		
 		.info-line {
-			margin: 10px 0;
+			margin: 8px 0;
 		}
-		label {
+		
+		.info-line label {
+			display: inline-block;
 			font-weight: bold;
+			min-width: 150px;
+			margin-right: 10px;
 		}
+		
 		button, input[type="submit"] {
-			background-color: #007bff;
+			background-color: #2c3e50;
 			color: white;
 			padding: 8px 15px;
 			border: none;
@@ -43,123 +41,97 @@
 			cursor: pointer;
 			margin: 5px 0;
 		}
+		
 		button:hover, input[type="submit"]:hover {
-			background-color: #0056b3;
+			background-color: #1a252f;
 		}
-		.messages {
-			list-style: none;
-			padding: 0;
-			margin: 15px 0;
-		}
-		.messages li {
-			padding: 10px;
-			margin: 5px 0;
-			border-radius: 3px;
-		}
-		.messages .success {
-			background-color: #d4edda;
-			border: 1px solid #c3e6cb;
-			color: #155724;
-		}
-		.messages .error {
-			background-color: #f8d7da;
-			border: 1px solid #f5c6cb;
-			color: #721c24;
-		}
+		
 		select {
-			padding: 5px;
+			padding: 8px;
 			border: 1px solid #ccc;
 			border-radius: 3px;
+			font-size: 14px;
 		}
 	</style>
-</head>
-<body>
-	<h1>Dashboard - Assistente</h1>
+{% endblock %}
 
-	{% if messages %}
-		<ul class="messages">
-			{% for message in messages %}
-				<li class="{% if message.tags %}{{ message.tags }}{% endif %}">
-					{{ message }}
-				</li>
-			{% endfor %}
-		</ul>
-	{% endif %}
+{% block content %}
+	<h1>Dashboard - Assistant</h1>
 
 	<div class="section">
-		<h2>Seu Perfil</h2>
+		<h2>Your Profile</h2>
 		{% if snapshot.profile %}
 			<div class="info-line">
-				<label>Utilizador:</label> {{ user.username }}
+				<label>Username:</label> {{ user.username }}
 			</div>
 			<div class="info-line">
-				<label>Nome:</label> {{ user.get_full_name|default:user.username }}
+				<label>Name:</label> {{ user.get_full_name|default:user.username }}
 			</div>
 			<div class="info-line">
-				<label>Equipa:</label> {{ snapshot.profile.team.name|default:"Não atribuído" }}
+				<label>Team:</label> {{ snapshot.profile.team.name|default:"Not assigned" }}
 			</div>
 			<div class="info-line">
-				<label>Papel:</label> {{ snapshot.profile.get_role_display }}
+				<label>Role:</label> {{ snapshot.profile.get_role_display }}
 			</div>
 		{% else %}
-			<p>Perfil não encontrado.</p>
+			<p>Profile not found.</p>
 		{% endif %}
 	</div>
 
 	<div class="section">
-		<h2>Estado Atual</h2>
+		<h2>Current Status</h2>
 		{% if snapshot.active_session %}
 			<div class="info-line">
-				<label>Sessão Ativa:</label>
-				<span class="status-badge">SIM - Login às {{ snapshot.active_session.login_at|time:'H:i:s' }}</span>
+				<label>Active Session:</label>
+				<span class="status-badge">YES - Login at {{ snapshot.active_session.login_at|time:'H:i:s' }}</span>
 			</div>
 		{% else %}
 			<div class="info-line">
-				<label>Sessão Ativa:</label>
-				<span class="status-badge">NÃO</span>
+				<label>Active Session:</label>
+				<span class="status-badge">NO</span>
 			</div>
 		{% endif %}
 
 		{% if snapshot.current_status_log %}
 			<div class="info-line">
-				<label>Status Atual:</label>
+				<label>Current Status:</label>
 				<span class="status-badge">{{ snapshot.current_status_log.get_status_display }}</span>
 			</div>
 		{% else %}
 			<div class="info-line">
-				<label>Status Atual:</label>
-				<span class="status-badge">Desconhecido</span>
+				<label>Current Status:</label>
+				<span class="status-badge">Unknown</span>
 			</div>
 		{% endif %}
 	</div>
 
 	<div class="section">
-		<h2>Pausa Ativa</h2>
+		<h2>Active Pause</h2>
 		{% if snapshot.active_pause %}
 			<div class="info-line">
-				<label>Tipo:</label> {{ snapshot.active_pause.pause_type.name }}
+				<label>Type:</label> {{ snapshot.active_pause.pause_type.name }}
 			</div>
 			<div class="info-line">
-				<label>Pedida às:</label> {{ snapshot.active_pause.requested_at|time:'H:i:s' }}
+				<label>Requested at:</label> {{ snapshot.active_pause.requested_at|time:'H:i:s' }}
 			</div>
 			<form method="POST" action="{% url 'breaks:finish-active' %}">
 				{% csrf_token %}
-				<input type="submit" value="Terminar Pausa Ativa">
+				<input type="submit" value="Finish Active Pause">
 			</form>
 		{% else %}
-			<p>Nenhuma pausa ativa no momento.</p>
+			<p>No active pause at the moment.</p>
 		{% endif %}
 	</div>
 
 	<div class="section">
-		<h2>Pedir Nova Pausa</h2>
+		<h2>Request New Pause</h2>
 		{% if snapshot.available_pause_types %}
 			<form method="POST">
 				{% csrf_token %}
 				<div class="info-line">
-					<label for="pause_type">Tipo de Pausa:</label>
+					<label for="pause_type">Pause Type:</label>
 					<select name="pause_type_id" id="pause_type" required>
-						<option value="">-- Seleccionar --</option>
+						<option value="">-- Select --</option>
 						{% for pause_type in snapshot.available_pause_types %}
 							<option value="{{ pause_type.id }}">
 								{{ pause_type.name }} ({{ pause_type.duration_display }})
@@ -167,7 +139,7 @@
 						{% endfor %}
 					</select>
 				</div>
-				<button type="submit" onclick="submitPauseRequest(event)">Pedir Pausa</button>
+				<button type="submit" onclick="submitPauseRequest(event)">Request Pause</button>
 			</form>
 			<script>
 				function submitPauseRequest(event) {
@@ -179,9 +151,7 @@
 				}
 			</script>
 		{% else %}
-			<p>Nenhum tipo de pausa disponível.</p>
+			<p>No pause types available.</p>
 		{% endif %}
 	</div>
-
-</body>
-</html>
+{% endblock %}
