@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Dashboard - Assistente</title>
+	<style>
+		body {
+			font-family: Arial, sans-serif;
+			margin: 20px;
+			max-width: 900px;
+			margin-left: auto;
+			margin-right: auto;
+		}
+		h1, h2 {
+			color: #333;
+		}
+		.section {
+			margin-bottom: 30px;
+			border: 1px solid #ddd;
+			padding: 15px;
+			border-radius: 5px;
+		}
+		.status-badge {
+			display: inline-block;
+			padding: 5px 10px;
+			border-radius: 3px;
+			background-color: #f0f0f0;
+			border: 1px solid #999;
+		}
+		.info-line {
+			margin: 10px 0;
+		}
+		label {
+			font-weight: bold;
+		}
+		button, input[type="submit"] {
+			background-color: #007bff;
+			color: white;
+			padding: 8px 15px;
+			border: none;
+			border-radius: 3px;
+			cursor: pointer;
+			margin: 5px 0;
+		}
+		button:hover, input[type="submit"]:hover {
+			background-color: #0056b3;
+		}
+		.messages {
+			list-style: none;
+			padding: 0;
+			margin: 15px 0;
+		}
+		.messages li {
+			padding: 10px;
+			margin: 5px 0;
+			border-radius: 3px;
+		}
+		.messages .success {
+			background-color: #d4edda;
+			border: 1px solid #c3e6cb;
+			color: #155724;
+		}
+		.messages .error {
+			background-color: #f8d7da;
+			border: 1px solid #f5c6cb;
+			color: #721c24;
+		}
+		select {
+			padding: 5px;
+			border: 1px solid #ccc;
+			border-radius: 3px;
+		}
+	</style>
+</head>
+<body>
+	<h1>Dashboard - Assistente</h1>
+
+	{% if messages %}
+		<ul class="messages">
+			{% for message in messages %}
+				<li class="{% if message.tags %}{{ message.tags }}{% endif %}">
+					{{ message }}
+				</li>
+			{% endfor %}
+		</ul>
+	{% endif %}
+
+	<div class="section">
+		<h2>Seu Perfil</h2>
+		{% if snapshot.profile %}
+			<div class="info-line">
+				<label>Utilizador:</label> {{ user.username }}
+			</div>
+			<div class="info-line">
+				<label>Nome:</label> {{ user.get_full_name|default:user.username }}
+			</div>
+			<div class="info-line">
+				<label>Equipa:</label> {{ snapshot.profile.team.name|default:"Não atribuído" }}
+			</div>
+			<div class="info-line">
+				<label>Papel:</label> {{ snapshot.profile.get_role_display }}
+			</div>
+		{% else %}
+			<p>Perfil não encontrado.</p>
+		{% endif %}
+	</div>
+
+	<div class="section">
+		<h2>Estado Atual</h2>
+		{% if snapshot.active_session %}
+			<div class="info-line">
+				<label>Sessão Ativa:</label>
+				<span class="status-badge">SIM - Login às {{ snapshot.active_session.login_at|time:'H:i:s' }}</span>
+			</div>
+		{% else %}
+			<div class="info-line">
+				<label>Sessão Ativa:</label>
+				<span class="status-badge">NÃO</span>
+			</div>
+		{% endif %}
+
+		{% if snapshot.current_status_log %}
+			<div class="info-line">
+				<label>Status Atual:</label>
+				<span class="status-badge">{{ snapshot.current_status_log.get_status_display }}</span>
+			</div>
+		{% else %}
+			<div class="info-line">
+				<label>Status Atual:</label>
+				<span class="status-badge">Desconhecido</span>
+			</div>
+		{% endif %}
+	</div>
+
+	<div class="section">
+		<h2>Pausa Ativa</h2>
+		{% if snapshot.active_pause %}
+			<div class="info-line">
+				<label>Tipo:</label> {{ snapshot.active_pause.pause_type.name }}
+			</div>
+			<div class="info-line">
+				<label>Pedida às:</label> {{ snapshot.active_pause.requested_at|time:'H:i:s' }}
+			</div>
+			<form method="POST" action="{% url 'breaks:finish-active' %}">
+				{% csrf_token %}
+				<input type="submit" value="Terminar Pausa Ativa">
+			</form>
+		{% else %}
+			<p>Nenhuma pausa ativa no momento.</p>
+		{% endif %}
+	</div>
+
+	<div class="section">
+		<h2>Pedir Nova Pausa</h2>
+		{% if snapshot.available_pause_types %}
+			<form method="POST">
+				{% csrf_token %}
+				<div class="info-line">
+					<label for="pause_type">Tipo de Pausa:</label>
+					<select name="pause_type_id" id="pause_type" required>
+						<option value="">-- Seleccionar --</option>
+						{% for pause_type in snapshot.available_pause_types %}
+							<option value="{{ pause_type.id }}">
+								{{ pause_type.name }} ({{ pause_type.duration_display }})
+							</option>
+						{% endfor %}
+					</select>
+				</div>
+				<button type="submit" onclick="submitPauseRequest(event)">Pedir Pausa</button>
+			</form>
+			<script>
+				function submitPauseRequest(event) {
+					const select = document.getElementById('pause_type');
+					const pauseTypeId = select.value;
+					if (pauseTypeId) {
+						window.location.href = '{% url 'breaks:request' 0 %}'.replace('0', pauseTypeId);
+					}
+				}
+			</script>
+		{% else %}
+			<p>Nenhum tipo de pausa disponível.</p>
+		{% endif %}
+	</div>
+
+</body>
+</html>

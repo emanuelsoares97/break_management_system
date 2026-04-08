@@ -36,6 +36,10 @@ class WorkSession(models.Model):
 	def clean(self) -> None:
 		if self.logout_at and self.logout_at < self.login_at:
 			raise ValidationError({"logout_at": "O logout não pode ser anterior ao login."})
+		if self.logout_at is not None and self.is_active:
+			raise ValidationError(
+				{"is_active": "Com logout_at definido, is_active deve ser False.", "logout_at": "Com is_active=True, logout_at deve ser None."}
+			)
 
 	@property
 	def is_open(self) -> bool:
@@ -96,7 +100,7 @@ class WorkStatusLog(models.Model):
 		return self.ended_at is None
 
 	@property
-	def duration(self) -> int:
+	def elapsed_seconds(self) -> int:
 		end_at = self.ended_at or timezone.now()
 		return int((end_at - self.started_at).total_seconds())
 

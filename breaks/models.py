@@ -1,5 +1,7 @@
 from django.db import models
 from django.db.models import Q
+from django.utils import timezone
+from django.core.validators import MinValueValidator
 from django.core.exceptions import ValidationError
 from django.contrib.auth.models import User
 
@@ -18,9 +20,9 @@ class PauseRequestStatus(models.TextChoices):
 class PauseType(models.Model):
 	"""Define um tipo de pausa disponível no sistema."""
 
-	name = models.CharField(max_length=80)
+	name = models.CharField(max_length=80, unique=True)
 	code = models.CharField(max_length=30, unique=True)
-	duration_minutes = models.PositiveIntegerField()
+	duration_minutes = models.PositiveIntegerField(validators=[MinValueValidator(1)])
 	requires_approval = models.BooleanField(default=True)
 	is_active = models.BooleanField(default=True)
 	created_at = models.DateTimeField(auto_now_add=True)
@@ -57,7 +59,7 @@ class PauseRequest(models.Model):
 		choices=PauseRequestStatus.choices,
 		default=PauseRequestStatus.PENDING,
 	)
-	requested_at = models.DateTimeField()
+	requested_at = models.DateTimeField(default=timezone.now)
 	approved_at = models.DateTimeField(null=True, blank=True)
 	approved_by = models.ForeignKey(
 		User,
@@ -102,6 +104,16 @@ class PauseRequest(models.Model):
 			raise ValidationError("Um pedido não pode estar aprovado e rejeitado ao mesmo tempo.")
 		if self.approved_by and self.rejected_by:
 			raise ValidationError("Um pedido não pode ter aprovador e rejeitador ao mesmo tempo.")
+		if self.status == PauseRequestStatus.APPROVED and not self.approved_at:
+			raise ValidationError({"approved_at": "Estado approved exige approved_at."})
+		if self.status == PauseRequestStatus.REJECTED and not self.rejected_at:
+			raise ValidationError({"rejected_at": "Estado rejected exige rejected_at."})
+		if self.status == PauseRequestStatus.FINISHED and (not self.started_at or not self.ended_at):
+			raise ValidationError({"status": "Estado finished exige started_at e ended_at."})
+		if self.approved_by and not self.approved_at:
+			raise ValidationError({"approved_at": "approved_by exige approved_at."})
+		if self.rejected_by and not self.rejected_at:
+			raise ValidationError({"rejected_at": "rejected_by exige rejected_at."})
 		if self.started_at and self.ended_at and self.ended_at < self.started_at:
 			raise ValidationError({"ended_at": "A data de fim não pode ser anterior ao início."})
 
