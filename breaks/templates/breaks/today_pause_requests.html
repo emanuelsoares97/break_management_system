@@ -4,72 +4,38 @@
 
 {% block extra_css %}
 	<style>
-		table {
-			width: 100%;
-			border-collapse: collapse;
-			margin: 15px 0;
+		.back-link {
+			font-size: 14px;
+			font-weight: 600;
 		}
-		
-		table th, table td {
-			border: 1px solid #ecf0f1;
-			padding: 10px;
-			text-align: left;
+
+		.cell-time {
+			display: flex;
+			flex-direction: column;
+			gap: 2px;
 		}
-		
-		table th {
-			background-color: #ecf0f1;
-			font-weight: bold;
+
+		.cell-time small {
+			color: #64748b;
 		}
-		
-		.status-badge {
-			display: inline-block;
-			padding: 5px 8px;
-			border-radius: 3px;
-			font-size: 12px;
-			font-weight: bold;
-		}
-		
-		.status-pending {
-			background-color: #fff3cd;
-			border: 1px solid #ffc107;
-			color: #856404;
-		}
-		
-		.status-approved {
-			background-color: #d4edda;
-			border: 1px solid #28a745;
-			color: #155724;
-		}
-		
-		.status-rejected {
-			background-color: #f8d7da;
-			border: 1px solid #dc3545;
-			color: #721c24;
-		}
-		
-		.status-finished {
-			background-color: #d1ecf1;
-			border: 1px solid #17a2b8;
-			color: #0c5460;
-		}
-		
-		a {
-			color: #2c3e50;
-			text-decoration: none;
-		}
-		
-		a:hover {
-			text-decoration: underline;
+
+		.over-limit {
+			margin-left: 6px;
 		}
 	</style>
 {% endblock %}
 
 {% block content %}
-	<h1>Today's Pauses</h1>
+	<div class="page-top">
+		<div class="title-wrap">
+			<h1>Today's Pauses</h1>
+			<p class="subtitle">Daily pause history with status and timestamps.</p>
+		</div>
+		<a href="{% url 'dashboard:supervisor' %}" class="back-link">&lt; Back to Dashboard</a>
+	</div>
 
-	<p><a href="{% url 'dashboard:supervisor' %}">← Back to Dashboard</a></p>
-
-	<h2>Pauses Today ({{ today_pauses|length }})</h2>
+	<div class="section surface">
+		<h2>Pauses Today ({{ today_pauses|length }})</h2>
 	{% if today_pauses %}
 		<table>
 			<thead>
@@ -79,6 +45,8 @@
 					<th>Type</th>
 					<th>Status</th>
 					<th>Requested At</th>
+					<th>Started At</th>
+					<th>Ended At</th>
 				</tr>
 			</thead>
 			<tbody>
@@ -88,16 +56,43 @@
 						<td>{{ pause.team.name }}</td>
 						<td>{{ pause.pause_type.name }} ({{ pause.pause_type.duration_display }})</td>
 						<td>
-							<span class="status-badge status-{{ pause.status }}">
-								{{ pause.get_status_display }}
-							</span>
+							{% include "includes/_status_badge.html" with status=pause.status label=pause.get_status_display %}
+							{% if pause.is_over_limit %}
+								<span class="over-limit">{% include "includes/_status_badge.html" with status="rejected" label="Over limit" %}</span>
+							{% endif %}
 						</td>
-						<td>{{ pause.requested_at|time:'H:i:s' }}</td>
+						<td>
+							<div class="cell-time">
+								<span>{{ pause.requested_at|date:"H:i" }}</span>
+								<small>{{ pause.requested_at|date:"d/m/Y" }}</small>
+							</div>
+						</td>
+						<td>
+							{% if pause.started_at %}
+								<div class="cell-time">
+									<span>{{ pause.started_at|date:"H:i" }}</span>
+									<small>{{ pause.started_at|date:"d/m/Y" }}</small>
+								</div>
+							{% else %}
+								<span class="badge badge-neutral">-</span>
+							{% endif %}
+						</td>
+						<td>
+							{% if pause.ended_at %}
+								<div class="cell-time">
+									<span>{{ pause.ended_at|date:"H:i" }}</span>
+									<small>{{ pause.ended_at|date:"d/m/Y" }}</small>
+								</div>
+							{% else %}
+								<span class="badge badge-neutral">Open</span>
+							{% endif %}
+						</td>
 					</tr>
 				{% endfor %}
 			</tbody>
 		</table>
 	{% else %}
-		<p>No pauses registered for today.</p>
+		<p class="empty-state">No pauses registered for today.</p>
 	{% endif %}
+	</div>
 {% endblock %}

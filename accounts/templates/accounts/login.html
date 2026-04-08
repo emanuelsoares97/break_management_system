@@ -4,105 +4,78 @@
 
 {% block extra_css %}
 	<style>
-		.content {
+		.page {
+			max-width: 460px;
+			margin: 30px auto;
+		}
+
+		.auth-card {
 			max-width: 400px;
-			margin: 50px auto;
-			padding: 40px;
+			margin: 0 auto;
 		}
-		
-		h1 {
+
+		.auth-card h1 {
 			text-align: center;
-			border: none;
-			padding-bottom: 0;
-			margin-bottom: 30px;
+			margin-bottom: 8px;
 		}
-		
-		.form-group {
+
+		.auth-subtitle {
+			text-align: center;
 			margin-bottom: 20px;
-		}
-		
-		label {
-			display: block;
-			margin-bottom: 5px;
-			color: #333;
-			font-weight: bold;
-		}
-		
-		input[type="text"],
-		input[type="password"] {
-			width: 100%;
-			padding: 10px;
-			border: 1px solid #ccc;
-			border-radius: 3px;
+			color: #64748b;
 			font-size: 14px;
 		}
-		
-		input[type="text"]:focus,
-		input[type="password"]:focus {
-			outline: none;
-			border-color: #2c3e50;
-			box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
-		}
-		
+
 		.form-submit {
 			width: 100%;
-			padding: 10px;
-			background-color: #2c3e50;
-			color: white;
-			border: none;
-			border-radius: 3px;
-			font-size: 16px;
-			font-weight: bold;
-			cursor: pointer;
-			transition: background-color 0.3s;
+			margin-top: 6px;
 		}
-		
-		.form-submit:hover {
-			background-color: #1a252f;
-		}
-		
+
 		.footer-text {
 			text-align: center;
-			margin-top: 20px;
-			color: #999;
+			margin-top: 16px;
+			color: #64748b;
 			font-size: 12px;
 		}
 	</style>
 {% endblock %}
 
 {% block content %}
-	<h1>Sign In</h1>
-	
-	<form method="POST" action="{% url 'accounts:login' %}">
-		{% csrf_token %}
-		
-		<div class="form-group">
-			<label for="username">Username:</label>
-			<input 
-				type="text" 
-				id="username" 
-				name="username" 
-				required 
-				autofocus
-				placeholder="Enter your username"
-			>
+	<div class="auth-card">
+		<h1>Sign In</h1>
+		<p class="auth-subtitle">Use your team credentials to access the dashboard.</p>
+
+		<form method="POST" action="{% url 'accounts:login' %}">
+			{% csrf_token %}
+
+			<div class="form-row">
+				<label for="username">Username</label>
+				<input
+					type="text"
+					id="username"
+					name="username"
+					required
+					autofocus
+					placeholder="Enter your username"
+				>
+			</div>
+
+			<div class="form-row">
+				<label for="password">Password</label>
+				<input
+					type="password"
+					id="password"
+					name="password"
+					required
+					placeholder="Enter your password"
+				>
+			</div>
+
+			<button type="submit" class="btn form-submit">Sign In</button>
+		</form>
+
+		<div class="footer-text">
+			<p>For internal tests, use the seeded test credentials.</p>
 		</div>
-		
-		<div class="form-group">
-			<label for="password">Password:</label>
-			<input 
-				type="password" 
-				id="password" 
-				name="password" 
-				required
-				placeholder="Enter your password"
-			>
-		</div>
-		
-		<button type="submit" class="form-submit">Sign In</button>
-	</form>
-	
-	<div class="footer-text">
-		<p>For testing, use test credentials from Django admin.</p>
 	</div>
 {% endblock %}

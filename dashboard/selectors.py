@@ -7,7 +7,7 @@ Sem chamadas a services.
 Otimizadas com select_related / prefetch_related.
 """
 
-from datetime import date
+from datetime import date, datetime, time
 from typing import Optional, Dict, List, Any
 
 from django.contrib.auth.models import User
@@ -33,10 +33,10 @@ def _get_today_range() -> tuple[Any, Any]:
 	"""
 	today = timezone.localdate()
 	start_of_day = timezone.make_aware(
-		timezone.datetime.combine(today, timezone.time.min)
+		datetime.combine(today, time.min)
 	)
 	end_of_day = timezone.make_aware(
-		timezone.datetime.combine(today, timezone.time.max)
+		datetime.combine(today, time.max)
 	)
 	return start_of_day, end_of_day
 
@@ -119,6 +119,26 @@ def get_current_status_log_for_user(user: User) -> Optional[WorkStatusLog]:
 	).first()
 
 
+def get_open_status_logs_for_users(user_ids: List[int]) -> QuerySet:
+	"""
+	Devolve os WorkStatusLog abertos (ended_at=None) para uma lista de users.
+
+	Útil para construir payload de polling de forma eficiente.
+	"""
+	if not user_ids:
+		return WorkStatusLog.objects.none()
+
+	return WorkStatusLog.objects.filter(
+		user_id__in=user_ids,
+		ended_at__isnull=True,
+	).select_related(
+		"user",
+		"session",
+		"pause_request",
+		"pause_request__pause_type",
+	)
+
+
 def get_pending_pause_requests_for_supervisor(supervisor: User) -> QuerySet:
 	"""
 	Devolve queryset de PauseRequest com status=PENDING
@@ -183,6 +203,31 @@ def get_active_pause_for_user(user: User) -> Optional[PauseRequest]:
 		"pause_type",
 		"team",
 	).first()
+
+
+def get_pending_pause_request_for_user(user: User) -> Optional[PauseRequest]:
+	"""
+	Devolve o pedido de pausa pendente do utilizador, se existir.
+	"""
+	return PauseRequest.objects.filter(
+		user=user,
+		status=PauseRequestStatus.PENDING,
+	).select_related(
+		"pause_type",
+		"team",
+	).order_by("-requested_at").first()
+
+
+def get_latest_pause_request_for_user(user: User) -> Optional[PauseRequest]:
+	"""
+	Devolve o último pedido de pausa do utilizador (qualquer status).
+	"""
+	return PauseRequest.objects.filter(
+		user=user,
+	).select_related(
+		"pause_type",
+		"team",
+	).order_by("-requested_at").first()
 
 
 def get_available_pause_types() -> QuerySet:

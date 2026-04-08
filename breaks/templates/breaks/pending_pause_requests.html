@@ -4,108 +4,75 @@
 
 {% block extra_css %}
 	<style>
-		table {
-			width: 100%;
-			border-collapse: collapse;
-			margin: 15px 0;
+		.back-link {
+			font-size: 14px;
+			font-weight: 600;
 		}
-		
-		table th, table td {
-			border: 1px solid #ecf0f1;
-			padding: 10px;
-			text-align: left;
-		}
-		
-		table th {
-			background-color: #ecf0f1;
-			font-weight: bold;
-		}
-		
+
 		.actions {
 			display: flex;
-			gap: 5px;
+			flex-wrap: wrap;
+			gap: 8px;
 		}
-		
-		button, input[type="submit"] {
-			background-color: #2c3e50;
-			color: white;
-			padding: 5px 10px;
-			border: none;
-			border-radius: 3px;
-			cursor: pointer;
-			margin: 2px;
-			font-size: 12px;
-		}
-		
-		button:hover, input[type="submit"]:hover {
-			background-color: #1a252f;
-		}
-		
-		.btn-reject {
-			background-color: #e74c3c;
-		}
-		
-		.btn-reject:hover {
-			background-color: #c0392b;
-		}
-		
-		a {
-			color: #2c3e50;
-			text-decoration: none;
-		}
-		
-		a:hover {
-			text-decoration: underline;
-		}
-		
+
 		.modal {
 			display: none;
 			position: fixed;
-			z-index: 1;
+			z-index: 200;
 			left: 0;
 			top: 0;
 			width: 100%;
 			height: 100%;
-			background-color: rgba(0,0,0,0.4);
+			background-color: rgba(15, 35, 54, 0.45);
 		}
-		
+
 		.modal-content {
-			background-color: #fefefe;
-			margin: 10% auto;
+			background-color: #ffffff;
+			margin: 9% auto;
 			padding: 20px;
-			border: 1px solid #888;
-			width: 400px;
-			border-radius: 5px;
+			border: 1px solid #dbe2ea;
+			width: min(480px, calc(100% - 24px));
+			border-radius: 12px;
+			box-shadow: 0 14px 30px rgba(15, 35, 54, 0.22);
 		}
-		
+
 		.close {
-			color: #aaa;
+			color: #6b7d8f;
 			float: right;
-			font-size: 28px;
+			font-size: 24px;
 			font-weight: bold;
 			cursor: pointer;
 		}
-		
+
 		.close:hover {
-			color: black;
+			color: #1f2a37;
 		}
-		
-		textarea {
-			width: 100%;
-			padding: 8px;
-			border: 1px solid #ccc;
-			border-radius: 3px;
-			font-family: Arial, sans-serif;
+
+		.row-meta {
+			display: flex;
+			gap: 6px;
+			align-items: center;
+		}
+
+		@media (max-width: 768px) {
+			.actions .btn {
+				width: 100%;
+			}
 		}
 	</style>
 {% endblock %}
 
 {% block content %}
-	<h1>Pending Pause Requests</h1>
+	<div class="page-top">
+		<div class="title-wrap">
+			<h1>Pending Pause Requests</h1>
+			<p class="subtitle">Review and decide pending assistant pause requests.</p>
+		</div>
+		<a href="{% url 'dashboard:supervisor' %}" class="back-link">&lt; Back to Dashboard</a>
+	</div>
 
-	<p><a href="{% url 'dashboard:supervisor' %}">← Back to Dashboard</a></p>
-
-	<h2>Pending Pauses ({{ pending_requests|length }})</h2>
+	<div class="section surface">
+		<h2>Pending Pauses ({{ pending_requests|length }})</h2>
 	{% if pending_requests %}
 		<table>
 			<thead>
@@ -121,16 +88,25 @@
 				{% for pause in pending_requests %}
 					<tr>
 						<td>{{ pause.user.get_full_name|default:pause.user.username }}</td>
-						<td>{{ pause.team.name }}</td>
-						<td>{{ pause.pause_type.name }} ({{ pause.pause_type.duration_display }})</td>
-						<td>{{ pause.requested_at|time:'H:i:s' }}</td>
+						<td>
+							<div class="row-meta">
+								{% include "includes/_status_badge.html" with status="ready" label=pause.team.name %}
+							</div>
+						</td>
+						<td>
+							<div class="row-meta">
+								<span>{{ pause.pause_type.name }}</span>
+								{% include "includes/_status_badge.html" with status="pending" label=pause.pause_type.duration_display %}
+							</div>
+						</td>
+						<td>{{ pause.requested_at|date:"d/m/Y H:i" }}</td>
 						<td>
 							<div class="actions">
-								<form method="POST" action="{% url 'breaks:approve' pause.id %}" style="display:inline;">
+								<form method="POST" action="{% url 'breaks:approve' pause.id %}" class="inline-form">
 									{% csrf_token %}
-									<input type="submit" value="Approve">
+									<button type="submit" class="btn">Approve</button>
 								</form>
-								<button class="btn-reject" onclick="openRejectForm({{ pause.id }}, '{{ pause.user.username }}')">Reject</button>
+								<button class="btn btn-danger" onclick="openRejectForm({{ pause.id }}, '{{ pause.user.username }}')">Reject</button>
 							</div>
 						</td>
 					</tr>
@@ -138,23 +114,24 @@
 			</tbody>
 		</table>
 	{% else %}
-		<p>No pending pauses at the moment.</p>
+		<p class="empty-state">No pending pauses at the moment.</p>
 	{% endif %}
+	</div>
 
-	<!-- Modal for rejection -->
 	<div id="rejectModal" class="modal">
 		<div class="modal-content">
 			<span class="close" onclick="closeRejectForm()">&times;</span>
 			<h2>Reject Pause</h2>
+			<p class="subtitle" id="rejectSubtitle" style="margin-bottom: 12px;">Provide an optional reason for the rejection.</p>
 			<form id="rejectForm" method="POST">
 				{% csrf_token %}
-				<div style="margin-bottom: 10px;">
-					<label for="reason">Reason (optional):</label><br>
+				<div class="form-row">
+					<label for="reason">Reason (optional)</label>
 					<textarea id="reason" name="reason" rows="4"></textarea>
 				</div>
-				<div>
-					<input type="submit" value="Reject">
-					<button type="button" onclick="closeRejectForm()">Cancel</button>
+				<div class="table-actions">
+					<button type="submit" class="btn btn-danger">Confirm Reject</button>
+					<button type="button" class="btn btn-secondary" onclick="closeRejectForm()">Cancel</button>
 				</div>
 			</form>
 		</div>
@@ -164,7 +141,9 @@
 		function openRejectForm(pauseId, username) {
 			const modal = document.getElementById('rejectModal');
 			const form = document.getElementById('rejectForm');
+			const subtitle = document.getElementById('rejectSubtitle');
 			form.action = '{% url 'breaks:reject' 0 %}'.replace('0', pauseId);
+			subtitle.textContent = 'Rejecting pause request from ' + username + '.';
 			modal.style.display = 'block';
 		}
 

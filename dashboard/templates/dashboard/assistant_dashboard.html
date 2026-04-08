@@ -4,154 +4,214 @@
 
 {% block extra_css %}
 	<style>
-		.section {
-			margin-bottom: 25px;
-			padding: 15px;
-			border: 1px solid #ecf0f1;
-			border-radius: 3px;
-			background-color: #fafafa;
+		.assistant-grid {
+			display: grid;
+			grid-template-columns: repeat(3, minmax(0, 1fr));
+			gap: 12px;
 		}
-		
-		.status-badge {
-			display: inline-block;
-			padding: 5px 10px;
-			border-radius: 3px;
-			background-color: #ecf0f1;
-			border: 1px solid #bdc3c7;
-			font-size: 12px;
+
+		.pause-list {
+			display: grid;
+			gap: 10px;
 		}
-		
-		.info-line {
-			margin: 8px 0;
+
+		.pause-row {
+			display: flex;
+			justify-content: space-between;
+			align-items: center;
+			gap: 10px;
+			padding: 10px;
+			border: 1px solid #dbe2ea;
+			border-radius: 8px;
+			background-color: #ffffff;
 		}
-		
-		.info-line label {
-			display: inline-block;
-			font-weight: bold;
-			min-width: 150px;
-			margin-right: 10px;
+
+		.pause-meta {
+			display: flex;
+			flex-direction: column;
+			gap: 2px;
 		}
-		
-		button, input[type="submit"] {
-			background-color: #2c3e50;
-			color: white;
-			padding: 8px 15px;
-			border: none;
-			border-radius: 3px;
-			cursor: pointer;
-			margin: 5px 0;
+
+		.pause-meta small {
+			color: #64748b;
 		}
-		
-		button:hover, input[type="submit"]:hover {
-			background-color: #1a252f;
+
+		.pause-timer {
+			font-size: 22px;
+			font-weight: 700;
+			color: #7b4f00;
+			margin-top: 6px;
 		}
-		
-		select {
-			padding: 8px;
-			border: 1px solid #ccc;
-			border-radius: 3px;
-			font-size: 14px;
+
+		@media (max-width: 900px) {
+			.assistant-grid {
+				grid-template-columns: 1fr;
+			}
 		}
 	</style>
 {% endblock %}
 
 {% block content %}
-	<h1>Dashboard - Assistant</h1>
+	<div class="page-top">
+		<div class="title-wrap">
+			<h1>Assistant Dashboard</h1>
+			<p class="subtitle">Operational status and pause actions in one place.</p>
+		</div>
+	</div>
 
-	<div class="section">
-		<h2>Your Profile</h2>
+	<div class="section surface">
+		<h2>Profile</h2>
 		{% if snapshot.profile %}
-			<div class="info-line">
-				<label>Username:</label> {{ user.username }}
-			</div>
-			<div class="info-line">
-				<label>Name:</label> {{ user.get_full_name|default:user.username }}
-			</div>
-			<div class="info-line">
-				<label>Team:</label> {{ snapshot.profile.team.name|default:"Not assigned" }}
-			</div>
-			<div class="info-line">
-				<label>Role:</label> {{ snapshot.profile.get_role_display }}
-			</div>
-		{% else %}
-			<p>Profile not found.</p>
-		{% endif %}
-	</div>
-
-	<div class="section">
-		<h2>Current Status</h2>
-		{% if snapshot.active_session %}
-			<div class="info-line">
-				<label>Active Session:</label>
-				<span class="status-badge">YES - Login at {{ snapshot.active_session.login_at|time:'H:i:s' }}</span>
-			</div>
-		{% else %}
-			<div class="info-line">
-				<label>Active Session:</label>
-				<span class="status-badge">NO</span>
-			</div>
-		{% endif %}
-
-		{% if snapshot.current_status_log %}
-			<div class="info-line">
-				<label>Current Status:</label>
-				<span class="status-badge">{{ snapshot.current_status_log.get_status_display }}</span>
-			</div>
-		{% else %}
-			<div class="info-line">
-				<label>Current Status:</label>
-				<span class="status-badge">Unknown</span>
-			</div>
-		{% endif %}
-	</div>
-
-	<div class="section">
-		<h2>Active Pause</h2>
-		{% if snapshot.active_pause %}
-			<div class="info-line">
-				<label>Type:</label> {{ snapshot.active_pause.pause_type.name }}
-			</div>
-			<div class="info-line">
-				<label>Requested at:</label> {{ snapshot.active_pause.requested_at|time:'H:i:s' }}
-			</div>
-			<form method="POST" action="{% url 'breaks:finish-active' %}">
-				{% csrf_token %}
-				<input type="submit" value="Finish Active Pause">
-			</form>
-		{% else %}
-			<p>No active pause at the moment.</p>
-		{% endif %}
-	</div>
-
-	<div class="section">
-		<h2>Request New Pause</h2>
-		{% if snapshot.available_pause_types %}
-			<form method="POST">
-				{% csrf_token %}
-				<div class="info-line">
-					<label for="pause_type">Pause Type:</label>
-					<select name="pause_type_id" id="pause_type" required>
-						<option value="">-- Select --</option>
-						{% for pause_type in snapshot.available_pause_types %}
-							<option value="{{ pause_type.id }}">
-								{{ pause_type.name }} ({{ pause_type.duration_display }})
-							</option>
-						{% endfor %}
-					</select>
+			<div class="kv-list">
+				<div class="kv-row">
+					<span class="kv-label">Username</span>
+					<span>{{ user.username }}</span>
 				</div>
-				<button type="submit" onclick="submitPauseRequest(event)">Request Pause</button>
-			</form>
-			<script>
-				function submitPauseRequest(event) {
-					const select = document.getElementById('pause_type');
-					const pauseTypeId = select.value;
-					if (pauseTypeId) {
-						window.location.href = '{% url 'breaks:request' 0 %}'.replace('0', pauseTypeId);
-					}
-				}
-			</script>
+				<div class="kv-row">
+					<span class="kv-label">Name</span>
+					<span>{{ user.get_full_name|default:user.username }}</span>
+				</div>
+				<div class="kv-row">
+					<span class="kv-label">Team</span>
+					<span>{{ snapshot.profile.team.name|default:"Not assigned" }}</span>
+				</div>
+				<div class="kv-row">
+					<span class="kv-label">Role</span>
+					<span>{{ snapshot.profile.get_role_display }}</span>
+				</div>
+			</div>
 		{% else %}
-			<p>No pause types available.</p>
+			<p class="empty-state">Profile not found.</p>
 		{% endif %}
 	</div>
+
+	<div class="section assistant-grid">
+		<div class="stats-card">
+			<p class="stats-card-label">Active Session</p>
+			{% if snapshot.active_session %}
+				<p class="stats-card-value" style="font-size: 18px;">Yes</p>
+				<p class="stats-card-hint">Login at {{ snapshot.active_session.login_at|date:"d/m/Y H:i" }}</p>
+			{% else %}
+				<p class="stats-card-value" style="font-size: 18px;">No</p>
+				<p class="stats-card-hint">No open session</p>
+			{% endif %}
+		</div>
+
+		<div class="stats-card">
+			<p class="stats-card-label">Current Status</p>
+			{% if snapshot.current_status_log %}
+				<p style="margin-bottom: 8px;">
+					{% include "includes/_status_badge.html" with status=snapshot.current_status_log.status label=snapshot.current_status_log.get_status_display %}
+				</p>
+				<p class="stats-card-hint">Since {{ snapshot.current_status_log.started_at|date:"H:i" }}</p>
+			{% else %}
+				<p>{% include "includes/_status_badge.html" with status="unknown" label="Unknown" %}</p>
+				<p class="stats-card-hint">No open status log</p>
+			{% endif %}
+		</div>
+
+		<div class="stats-card">
+			<p class="stats-card-label">Active Pause</p>
+			{% if snapshot.active_pause %}
+				<p style="margin-bottom: 8px;">{% include "includes/_status_badge.html" with status="paused" label=snapshot.active_pause.pause_type.name %}</p>
+				<p id="assistant-pause-timer" class="pause-timer">--:--</p>
+				<p class="stats-card-hint">Started {{ snapshot.active_pause.started_at|default:snapshot.active_pause.requested_at|date:"H:i" }}</p>
+			{% else %}
+				<p>{% include "includes/_status_badge.html" with status="ready" label="No active pause" %}</p>
+				<p class="stats-card-hint">You can request a new pause</p>
+			{% endif %}
+		</div>
+	</div>
+
+	<div class="section grid grid-2">
+		<div class="surface">
+			<h2>Pause Actions</h2>
+			{% if snapshot.active_pause %}
+				<div
+					id="assistant-pause-timer-data"
+					data-start-epoch="{{ snapshot.active_pause.started_at|default:snapshot.active_pause.requested_at|date:'U' }}"
+					data-duration-seconds="{{ snapshot.active_pause.pause_type.duration_minutes|default:0 }}"
+					style="display:none;"
+				></div>
+				<div class="kv-list" style="margin-bottom: 12px;">
+					<div class="kv-row">
+						<span class="kv-label">Type</span>
+						<span>{{ snapshot.active_pause.pause_type.name }}</span>
+					</div>
+					<div class="kv-row">
+						<span class="kv-label">Started</span>
+						<span>{{ snapshot.active_pause.started_at|default:snapshot.active_pause.requested_at|date:"d/m/Y H:i" }}</span>
+					</div>
+					<div class="kv-row">
+						<span class="kv-label">Remaining</span>
+						<span id="assistant-pause-timer-inline">--:--</span>
+					</div>
+				</div>
+				<form method="POST" action="{% url 'breaks:finish-active' %}">
+					{% csrf_token %}
+					<button type="submit" class="btn btn-secondary">Finish Active Pause</button>
+				</form>
+			{% else %}
+				<p class="empty-state">No active pause at the moment.</p>
+			{% endif %}
+		</div>
+
+		<div class="surface">
+			<h2>Request New Pause</h2>
+			{% if snapshot.available_pause_types %}
+				<div class="pause-list">
+					{% for pause_type in snapshot.available_pause_types %}
+						<div class="pause-row">
+							<div class="pause-meta">
+								<strong>{{ pause_type.name }}</strong>
+								<small>{{ pause_type.duration_display }}</small>
+							</div>
+							<form method="POST" action="{% url 'breaks:request' pause_type.id %}">
+								{% csrf_token %}
+								<button type="submit" class="btn">Request</button>
+							</form>
+						</div>
+					{% endfor %}
+				</div>
+			{% else %}
+				<p class="empty-state">No pause types available.</p>
+			{% endif %}
+		</div>
+	</div>
+{% endblock %}
+
+{% block extra_js %}
+	<script>
+		(function () {
+			const timerData = document.getElementById("assistant-pause-timer-data");
+			const timerMain = document.getElementById("assistant-pause-timer");
+			const timerInline = document.getElementById("assistant-pause-timer-inline");
+
+			if (!timerData || !timerMain || !timerInline) {
+				return;
+			}
+
+			const startEpoch = parseInt(timerData.getAttribute("data-start-epoch") || "0", 10);
+			const durationMinutes = parseInt(timerData.getAttribute("data-duration-seconds") || "0", 10);
+			const endEpoch = startEpoch + (durationMinutes * 60);
+
+			function formatSeconds(totalSeconds) {
+				const safe = Math.max(parseInt(totalSeconds || 0, 10), 0);
+				const minutes = Math.floor(safe / 60);
+				const seconds = safe % 60;
+				return String(minutes).padStart(2, "0") + ":" + String(seconds).padStart(2, "0");
+			}
+
+			function tick() {
+				const nowEpoch = Math.floor(Date.now() / 1000);
+				const remaining = Math.max(endEpoch - nowEpoch, 0);
+				const text = formatSeconds(remaining);
+				timerMain.textContent = text;
+				timerInline.textContent = text;
+			}
+
+			tick();
+			window.setInterval(tick, 1000);
+		})();
+	</script>
 {% endblock %}

@@ -4,124 +4,313 @@
 
 {% block extra_css %}
 	<style>
-		.stat-box {
-			display: inline-block;
-			margin-right: 20px;
-			padding: 15px;
-			border: 1px solid #e8e8e8;
-			border-radius: 3px;
-			background-color: #fafafa;
-			text-align: center;
+		.quick-links {
+			display: flex;
+			flex-wrap: wrap;
+			gap: 10px;
 		}
-		
-		.stat-number {
-			font-size: 28px;
-			font-weight: bold;
-			color: #2c3e50;
+
+		.note-text {
+			font-size: 13px;
+			color: #64748b;
+			margin-top: 8px;
 		}
-		
-		.stat-label {
-			font-size: 12px;
-			color: #666;
-			margin-top: 5px;
+
+		.pending-preview-list {
+			display: grid;
+			gap: 8px;
+			list-style: none;
+			padding: 0;
 		}
-		
-		table {
-			width: 100%;
-			border-collapse: collapse;
-			margin: 15px 0;
-		}
-		
-		table th, table td {
-			border: 1px solid #ecf0f1;
+
+		.pending-preview-item {
+			display: flex;
+			justify-content: space-between;
+			align-items: center;
+			gap: 10px;
 			padding: 10px;
-			text-align: left;
+			border: 1px solid #dbe2ea;
+			border-radius: 8px;
+			background-color: #ffffff;
 		}
-		
-		table th {
-			background-color: #ecf0f1;
-			font-weight: bold;
+
+		.pending-preview-meta {
+			display: grid;
+			gap: 2px;
 		}
-		
-		a {
-			color: #2c3e50;
-			text-decoration: none;
+
+		.pending-preview-meta small {
+			font-size: 12px;
+			color: #64748b;
 		}
-		
-		a:hover {
-			text-decoration: underline;
-		}
-		
-		.section {
-			margin-bottom: 25px;
+
+		@media (max-width: 768px) {
+			.quick-links .btn {
+				width: 100%;
+			}
+
+			.pending-preview-item {
+				flex-direction: column;
+				align-items: flex-start;
+			}
 		}
 	</style>
 {% endblock %}
 
 {% block content %}
-	<h1>Dashboard - Supervision</h1>
+	<div class="page-top">
+		<div class="title-wrap">
+			<h1>Supervisor Dashboard</h1>
+			<p class="subtitle">Team activity, pending decisions, and daily pause overview.</p>
+		</div>
+	</div>
 
-	<div class="section">
-		<h2>Your Profile</h2>
+	<div class="section surface">
+		<h2>Profile</h2>
 		{% if snapshot.profile %}
-			<strong>Username:</strong> {{ user.username }}<br>
-			<strong>Name:</strong> {{ user.get_full_name|default:user.username }}<br>
-			<strong>Role:</strong> {{ snapshot.profile.get_role_display }}<br>
-			<strong>Managed Teams:</strong> {{ snapshot.managed_team_ids|length }} team(s)
+			<div class="kv-list">
+				<div class="kv-row">
+					<span class="kv-label">Username</span>
+					<span>{{ user.username }}</span>
+				</div>
+				<div class="kv-row">
+					<span class="kv-label">Name</span>
+					<span>{{ user.get_full_name|default:user.username }}</span>
+				</div>
+				<div class="kv-row">
+					<span class="kv-label">Role</span>
+					<span>{{ snapshot.profile.get_role_display }}</span>
+				</div>
+				<div class="kv-row">
+					<span class="kv-label">Managed Teams</span>
+					<span>{{ snapshot.managed_team_ids|length }}</span>
+				</div>
+			</div>
 		{% else %}
-			<p>Profile not found.</p>
+			<p class="empty-state">Profile not found.</p>
 		{% endif %}
 	</div>
 
-	<div class="section">
-		<h2>Quick Statistics</h2>
-		<div class="stat-box">
-			<div class="stat-number">{{ snapshot.logged_in_assistants|length }}</div>
-			<div class="stat-label">Assistants logged in</div>
+	<div class="section grid grid-3">
+		<div class="stats-card">
+			<p class="stats-card-label">Assistants Logged In</p>
+			<p id="stat-logged-in" class="stats-card-value">{{ snapshot.logged_in_assistants|length }}</p>
+			<p class="stats-card-hint">Current active sessions</p>
 		</div>
-		<div class="stat-box">
-			<div class="stat-number">{{ snapshot.pending_pause_requests|length }}</div>
-			<div class="stat-label">Pending pauses</div>
+		<div class="stats-card">
+			<p class="stats-card-label">Pending Pauses</p>
+			<p id="stat-pending" class="stats-card-value">{{ snapshot.pending_pause_requests|length }}</p>
+			<p class="stats-card-hint">Waiting for decision</p>
 		</div>
-		<div class="stat-box">
-			<div class="stat-number">{{ snapshot.pauses_today|length }}</div>
-			<div class="stat-label">Pauses today</div>
+		<div class="stats-card">
+			<p class="stats-card-label">Pauses Today</p>
+			<p id="stat-pauses-today" class="stats-card-value">{{ snapshot.pauses_today|length }}</p>
+			<p class="stats-card-hint">All statuses</p>
 		</div>
 	</div>
 
-	<div class="section">
-		<h2>Logged In Assistants</h2>
-		{% if snapshot.logged_in_assistants %}
-			<table>
-				<thead>
-					<tr>
-						<th>Username</th>
-						<th>Team</th>
-						<th>Login Time</th>
-						<th>Duration (seconds)</th>
-					</tr>
-				</thead>
-				<tbody>
-					{% for session in snapshot.logged_in_assistants %}
-						<tr>
-							<td>{{ session.user.get_full_name|default:session.user.username }}</td>
-							<td>{{ session.user.profile.team.name|default:"N/A" }}</td>
-							<td>{{ session.login_at|time:'H:i:s' }}</td>
-							<td>{{ session.duration_seconds }}</td>
-						</tr>
-					{% endfor %}
-				</tbody>
-			</table>
-		{% else %}
-			<p>No assistants logged in at the moment.</p>
-		{% endif %}
-	</div>
-
-	<div class="section">
+	<div class="section surface">
 		<h2>Quick Actions</h2>
-		<ul>
-			<li><a href="{% url 'breaks:pending' %}">View Pending Pauses</a></li>
-			<li><a href="{% url 'breaks:today' %}">View Today's Pauses</a></li>
+		<div class="quick-links">
+			<a href="{% url 'breaks:pending' %}" class="btn">View Pending Pauses</a>
+			<a href="{% url 'breaks:today' %}" class="btn btn-secondary">View Today's Pauses</a>
+		</div>
+		<p class="note-text">Use pending pauses to approve or reject requests quickly.</p>
+	</div>
+
+	<div class="section surface">
+		<h2>Logged In Assistants</h2>
+		<table id="logged-assistants-table"{% if not snapshot.logged_in_assistants %} style="display:none;"{% endif %}>
+			<thead>
+				<tr>
+					<th>Username</th>
+					<th>Team</th>
+					<th>Current Status</th>
+					<th>Pause Timer</th>
+					<th>Login Time</th>
+				</tr>
+			</thead>
+			<tbody id="logged-assistants-body">
+				{% for session in snapshot.logged_in_assistants %}
+					<tr>
+						<td>{{ session.user.get_full_name|default:session.user.username }}</td>
+						<td>{{ session.user.profile.team.name|default:"N/A" }}</td>
+						<td>{% include "includes/_status_badge.html" with status="ready" label="Ready" %}</td>
+						<td>-</td>
+						<td>{{ session.login_at|date:"d/m/Y H:i" }}</td>
+					</tr>
+				{% endfor %}
+			</tbody>
+		</table>
+		<p id="logged-assistants-empty" class="empty-state"{% if snapshot.logged_in_assistants %} style="display:none;"{% endif %}>No assistants logged in at the moment.</p>
+	</div>
+
+	<div class="section surface">
+		<h2>Pending Requests Preview</h2>
+		<ul id="pending-preview-list" class="pending-preview-list">
+			{% for pause in snapshot.pending_pause_requests|slice:":5" %}
+				<li class="pending-preview-item">
+					<div class="pending-preview-meta">
+						<strong>{{ pause.user.get_full_name|default:pause.user.username }}</strong>
+						<small>{{ pause.team.name }} - {{ pause.pause_type.name }}</small>
+					</div>
+					<span class="badge badge-pending">{{ pause.requested_at|date:"d/m/Y H:i" }}</span>
+				</li>
+			{% empty %}
+				<li id="pending-preview-empty" class="empty-state">No pending requests right now.</li>
+			{% endfor %}
 		</ul>
 	</div>
+
+{% endblock %}
+
+{% block extra_js %}
+	<script>
+		(function () {
+			const pollUrl = "{% url 'dashboard:supervisor-poll' %}";
+			const pollMs = 5000;
+			let timerTargetsByUsername = {};
+
+			function escapeHtml(value) {
+				return String(value)
+					.replace(/&/g, "&amp;")
+					.replace(/</g, "&lt;")
+					.replace(/>/g, "&gt;")
+					.replace(/\"/g, "&quot;")
+					.replace(/'/g, "&#039;");
+			}
+
+			function renderStatusBadge(status, label) {
+				const normalized = (status || "").toLowerCase();
+				const allowed = ["ready", "paused", "pending", "approved", "rejected", "finished"];
+				const badgeClass = allowed.includes(normalized) ? "badge-" + normalized : "badge-neutral";
+				const safeLabel = escapeHtml(label || status || "Unknown");
+				return '<span class="badge ' + badgeClass + '">' + safeLabel + '</span>';
+			}
+
+			function formatSeconds(totalSeconds) {
+				const safe = Math.max(parseInt(totalSeconds || 0, 10), 0);
+				const minutes = Math.floor(safe / 60);
+				const seconds = safe % 60;
+				return String(minutes).padStart(2, "0") + ":" + String(seconds).padStart(2, "0");
+			}
+
+			function renderPauseTimerCell(row) {
+				if (row.status !== "paused") {
+					return '<span class="badge badge-neutral">-</span>';
+				}
+
+				const remaining = parseInt(row.pause_remaining_seconds || 0, 10);
+				return '<span class="badge badge-paused js-pause-timer" data-username="' + escapeHtml(row.username) + '">' + formatSeconds(remaining) + '</span>';
+			}
+
+			function updateStats(stats) {
+				document.getElementById("stat-logged-in").textContent = stats.logged_in_assistants;
+				document.getElementById("stat-pending").textContent = stats.pending_pause_requests;
+				document.getElementById("stat-pauses-today").textContent = stats.pauses_today;
+			}
+
+			function updateLoggedAssistants(rows) {
+				const table = document.getElementById("logged-assistants-table");
+				const tbody = document.getElementById("logged-assistants-body");
+				const empty = document.getElementById("logged-assistants-empty");
+
+				if (!table || !tbody || !empty) {
+					return;
+				}
+
+				timerTargetsByUsername = {};
+
+				if (!rows || rows.length === 0) {
+					table.style.display = "none";
+					empty.style.display = "block";
+					return;
+				}
+
+				table.style.display = "table";
+				empty.style.display = "none";
+
+				tbody.innerHTML = rows.map(function (row) {
+					if (row.status === "paused") {
+						timerTargetsByUsername[row.username] = parseInt(row.pause_remaining_seconds || 0, 10);
+					}
+
+					return "<tr>" +
+						"<td>" + escapeHtml(row.full_name || row.username) + "</td>" +
+						"<td>" + escapeHtml(row.team || "N/A") + "</td>" +
+						"<td>" + renderStatusBadge(row.status, row.status_label) + "</td>" +
+						"<td>" + renderPauseTimerCell(row) + "</td>" +
+						"<td>" + escapeHtml(row.login_at || "-") + "</td>" +
+						"</tr>";
+				}).join("");
+			}
+
+			function tickPausedTimers() {
+				const nodes = document.querySelectorAll(".js-pause-timer");
+				nodes.forEach(function (node) {
+					const username = node.getAttribute("data-username");
+					if (!username) {
+						return;
+					}
+
+					const current = parseInt(timerTargetsByUsername[username] || 0, 10);
+					node.textContent = formatSeconds(current);
+					timerTargetsByUsername[username] = Math.max(current - 1, 0);
+				});
+			}
+
+			function updatePendingPreview(rows) {
+				const list = document.getElementById("pending-preview-list");
+				if (!list) {
+					return;
+				}
+
+				if (!rows || rows.length === 0) {
+					list.innerHTML = '<li id="pending-preview-empty" class="empty-state">No pending requests right now.</li>';
+					return;
+				}
+
+				list.innerHTML = rows.map(function (row) {
+					const displayName = row.full_name || row.username;
+					return '<li class="pending-preview-item">' +
+						'<div class="pending-preview-meta">' +
+							'<strong>' + escapeHtml(displayName) + '</strong>' +
+							'<small>' + escapeHtml(row.team) + ' - ' + escapeHtml(row.pause_type) + '</small>' +
+						'</div>' +
+						'<span class="badge badge-pending">' + escapeHtml(row.requested_at) + '</span>' +
+					'</li>';
+				}).join("");
+			}
+
+			async function runPoll() {
+				try {
+					const response = await fetch(pollUrl, {
+						method: "GET",
+						headers: { "X-Requested-With": "XMLHttpRequest" },
+						credentials: "same-origin",
+						cache: "no-store"
+					});
+
+					if (!response.ok) {
+						return;
+					}
+
+					const payload = await response.json();
+					if (!payload || !payload.stats) {
+						return;
+					}
+
+					updateStats(payload.stats);
+					updateLoggedAssistants(payload.logged_in_assistants || []);
+					updatePendingPreview(payload.pending_preview || []);
+				} catch (error) {
+					console.warn("Supervisor polling failed", error);
+				}
+			}
+
+			runPoll();
+			window.setInterval(runPoll, pollMs);
+			window.setInterval(tickPausedTimers, 1000);
+		})();
+	</script>
 {% endblock %}

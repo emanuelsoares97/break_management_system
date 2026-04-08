@@ -76,10 +76,12 @@ def login_view(request):
 		try:
 			start_work_session(user)
 		except DomainError as e:
-			# Se há erro ao abrir sessão, fazer logout do Django
-			# para não deixar sessão de auth aberta sem WorkSession
-			messages.error(request, f"Failed to start work session: {str(e)}")
-			return render(request, "accounts/login.html")
+			error_text = str(e)
+			# Permitir login se já existir sessão ativa para este user.
+			# Evita lockout em casos de sessão já aberta.
+			if "already has an active work session" not in error_text:
+				messages.error(request, f"Failed to start work session: {error_text}")
+				return render(request, "accounts/login.html")
 		
 		# Fazer login Django
 		login(request, user)

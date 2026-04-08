@@ -1,0 +1,17 @@
+{% with normalized_status=status|default:''|lower %}
+	{% if normalized_status == 'ready' %}
+		<span class="badge badge-ready">{{ label|default:status|title }}</span>
+	{% elif normalized_status == 'paused' %}
+		<span class="badge badge-paused">{{ label|default:status|title }}</span>
+	{% elif normalized_status == 'pending' %}
+		<span class="badge badge-pending">{{ label|default:status|title }}</span>
+	{% elif normalized_status == 'approved' %}
+		<span class="badge badge-approved">{{ label|default:status|title }}</span>
+	{% elif normalized_status == 'rejected' %}
+		<span class="badge badge-rejected">{{ label|default:status|title }}</span>
+	{% elif normalized_status == 'finished' %}
+		<span class="badge badge-finished">{{ label|default:status|title }}</span>
+	{% else %}
+		<span class="badge badge-neutral">{{ label|default:status|title }}</span>
+	{% endif %}
+{% endwith %}
